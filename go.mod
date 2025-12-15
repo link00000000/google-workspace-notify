@@ -1,4 +1,4 @@
-module github.com/link00000000/google-workspace-notify
+module github.com/link00000000/gwsn
 
 go 1.25.4
 

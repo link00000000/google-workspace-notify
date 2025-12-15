@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/getlantern/systray"
-	"github.com/link00000000/google-workspace-notify/internal/systray/assets"
+	"github.com/link00000000/gwsn/internal/systray/assets"
 	"golang.org/x/sync/errgroup"
 )
 

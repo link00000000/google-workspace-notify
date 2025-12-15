@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/link00000000/google-workspace-notify/internal/gworkspace"
-	"github.com/link00000000/google-workspace-notify/internal/sysnotif"
-	"github.com/link00000000/google-workspace-notify/internal/systray"
-	"github.com/link00000000/google-workspace-notify/internal/ui"
+	"github.com/link00000000/gwsn/internal/gworkspace"
+	"github.com/link00000000/gwsn/internal/sysnotif"
+	"github.com/link00000000/gwsn/internal/systray"
+	"github.com/link00000000/gwsn/internal/ui"
 	"golang.org/x/sync/errgroup"
 )
 

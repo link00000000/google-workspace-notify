@@ -18,6 +18,7 @@
         nativeBuildInputs = with pkgs; [
           go
           gopls
+		  delve
 		  pkg-config
 		  libayatana-appindicator
 		  gtk3
@@ -26,7 +27,7 @@
 		  gnumake
 		];
       in {
-        devShells.default = pkgs.mkShell {inherit nativeBuildInputs buildInputs;};
+        devShells.default = pkgs.mkShell {inherit nativeBuildInputs buildInputs; hardeningDisable = [ "fortify" ];};
 
         packages.default = pkgs.buildGoModule rec {
           name = "template";
