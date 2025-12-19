@@ -271,14 +271,16 @@ func (g *GmailMonitor) CheckNow(ctx context.Context) error {
 		return fmt.Errorf("error while fetching new messages: %v", err)
 	}
 
-	slog.Info("received new messages from gmail", "numMessages", len(msgs))
-	for _, msg := range msgs {
-		slog.Debug("new messages", "to", msg.To, "from", msg.From, "subject", msg.Subject)
-	}
+	if len(msgs) > 0 {
+		slog.Info("received new messages from gmail", "numMessages", len(msgs))
+		for _, msg := range msgs {
+			slog.Debug("new messages", "to", msg.To, "from", msg.From, "subject", msg.Subject)
+		}
 
-	select {
-	case g.msgsChan <- msgs:
-	case <-ctx.Done():
+		select {
+		case g.msgsChan <- msgs:
+		case <-ctx.Done():
+		}
 	}
 
 	return nil
