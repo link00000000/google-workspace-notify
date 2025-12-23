@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -62,8 +63,27 @@ var GlobPatterns_module = []string{
 
 var Default = BuildHost
 
-func BuildHost() {
-	mg.Deps(mg.F(Build, runtime.GOOS, runtime.GOARCH))
+func Run() error {
+	mg.Deps(BuildHost)
+
+	resolvedTargetOS, err := resolveTargetOS(runtime.GOOS)
+	if err != nil {
+		return fmt.Errorf("failed to resolve target OS %s: %v", runtime.GOOS, err)
+	}
+
+	resolvedTargetArch, err := resolveTargetArch(runtime.GOARCH)
+	if err != nil {
+		return fmt.Errorf("failed to resolve target arch %s: %v", runtime.GOARCH, err)
+	}
+
+	dst := resolveOutputFile(resolvedTargetOS, resolvedTargetArch)
+
+	cmd := exec.Command(dst)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd.Run()
 }
 
 func All() {
@@ -77,6 +97,10 @@ func All() {
 		f(TargetOS_windows, TargetArch_amd64),
 		f(TargetOS_windows, TargetArch_arm64),
 	)
+}
+
+func BuildHost() {
+	mg.Deps(mg.F(Build, runtime.GOOS, runtime.GOARCH))
 }
 
 func Build(ctx context.Context, targetOS, targetArch string) error {
@@ -97,7 +121,9 @@ func Build(ctx context.Context, targetOS, targetArch string) error {
 	}
 
 	if !newer {
-		fmt.Println("no changes")
+		if mg.Verbose() {
+			fmt.Println("no changes")
+		}
 		return nil
 	}
 
@@ -173,11 +199,36 @@ func Watch(ctx context.Context) error {
 		return nil
 	}
 
+	var cmd *exec.Cmd = nil
 	handleWatchEvent := func() error {
-		mg.Deps(BuildHost)
+		if cmd != nil {
+			cmd.Process.Kill()
+			cmd = nil
+		}
+
+		exe, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("failed to get executable: %v", err)
+		}
+
+		cmd = exec.Command(exe, "Run")
+		cmd.Env = os.Environ()
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		cmd.Start()
+
+		//if err := cmd.Run(); err != nil {
+		// Don't return an error here. If the build or run fails,
+		// just wait and try again later
+		//	fmt.Fprintf(os.Stderr, "process exited with code %d", cmd.ProcessState.ExitCode())
+		//} else {
+		//	fmt.Println("build completed successfully")
+		//}
 
 		if err := updateWatchList(); err != nil {
-			return fmt.Errorf("error while updating watch list: %v", err)
+			return fmt.Errorf("failed to update watch list: %v", err)
 		}
 
 		return nil
@@ -187,18 +238,37 @@ func Watch(ctx context.Context) error {
 		return fmt.Errorf("error while handling watch event: %v", err)
 	}
 
-	fmt.Println("Waiting for change to trigger rebuild...")
-
 	for {
+		fmt.Println("Waiting for change to trigger rebuild...")
+
 		select {
-		case _, ok := <-watcher.Events:
+		case ev, ok := <-watcher.Events:
 			if !ok {
 				break
 			}
 
-			fmt.Println("Detected change, triggering rebuild...")
-			if err := handleWatchEvent(); err != nil {
-				return fmt.Errorf("error while handling watch event: %v", err)
+			if mg.Verbose() {
+				fmt.Printf("received event from watcher (op = %s, file = %s)\n", ev.Op.String(), ev.Name)
+			}
+
+			shouldRebuild := false
+			for _, pat := range slices.Concat(GlobPatterns_sources, GlobPatterns_assets, GlobPatterns_module) {
+				fs, err := filepath.Glob(pat)
+				if err != nil {
+					return fmt.Errorf("failed to glob files with pattern %s: %v", pat, err)
+				}
+
+				if slices.Contains(fs, ev.Name) {
+					shouldRebuild = true
+					break
+				}
+			}
+
+			if shouldRebuild {
+				fmt.Println("Detected change, triggering rebuild...")
+				if err := handleWatchEvent(); err != nil {
+					return fmt.Errorf("error while handling watch event: %v", err)
+				}
 			}
 
 		case err, ok := <-watcher.Errors:
