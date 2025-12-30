@@ -63,17 +63,17 @@ var GlobPatterns_module = []string{
 
 var Default = BuildHost
 
-func Run() error {
-	mg.Deps(BuildHost)
+func Run(ctx context.Context, targetOS, targetArch string) error {
+	mg.Deps(mg.F(Build, targetOS, targetArch))
 
-	resolvedTargetOS, err := resolveTargetOS(runtime.GOOS)
+	resolvedTargetOS, err := resolveTargetOS(targetOS)
 	if err != nil {
-		return fmt.Errorf("failed to resolve target OS %s: %v", runtime.GOOS, err)
+		return fmt.Errorf("failed to resolve target OS %s: %v", targetOS, err)
 	}
 
-	resolvedTargetArch, err := resolveTargetArch(runtime.GOARCH)
+	resolvedTargetArch, err := resolveTargetArch(targetArch)
 	if err != nil {
-		return fmt.Errorf("failed to resolve target arch %s: %v", runtime.GOARCH, err)
+		return fmt.Errorf("failed to resolve target arch %s: %v", targetArch, err)
 	}
 
 	dst := resolveOutputFile(resolvedTargetOS, resolvedTargetArch)
@@ -86,21 +86,8 @@ func Run() error {
 	return cmd.Run()
 }
 
-func All() {
-	f := func(os TargetOS, arch TargetArch) mg.Fn {
-		return mg.F(Build, string(os), string(arch))
-	}
-
-	mg.Deps(
-		f(TargetOS_linux, TargetArch_amd64),
-
-		f(TargetOS_windows, TargetArch_amd64),
-		f(TargetOS_windows, TargetArch_arm64),
-	)
-}
-
-func BuildHost() {
-	mg.Deps(mg.F(Build, runtime.GOOS, runtime.GOARCH))
+func RunHost() {
+	mg.Deps(mg.F(Run, runtime.GOOS, runtime.GOARCH))
 }
 
 func Build(ctx context.Context, targetOS, targetArch string) error {
@@ -134,6 +121,23 @@ func Build(ctx context.Context, targetOS, targetArch string) error {
 		"GOOS":   string(resolvedTargetOS),
 		"GOARCH": string(resolvedTargetArch),
 	}, "go", "build", "-o", dst, GlobPattern_entrypoint)
+}
+
+func BuildHost() {
+	mg.Deps(mg.F(Build, runtime.GOOS, runtime.GOARCH))
+}
+
+func BuildAll() {
+	f := func(os TargetOS, arch TargetArch) mg.Fn {
+		return mg.F(Build, string(os), string(arch))
+	}
+
+	mg.Deps(
+		f(TargetOS_linux, TargetArch_amd64),
+
+		f(TargetOS_windows, TargetArch_amd64),
+		f(TargetOS_windows, TargetArch_arm64),
+	)
 }
 
 // Manage your deps, or running package managers.
