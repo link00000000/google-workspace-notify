@@ -8,12 +8,18 @@ import (
 	"os"
 	"time"
 
+	"github.com/link00000000/gwsn/internal/app"
 	"github.com/link00000000/gwsn/internal/gworkspace"
+	"github.com/link00000000/gwsn/internal/services/gmail"
+	"github.com/link00000000/gwsn/internal/services/googlecalendar"
+	"github.com/link00000000/gwsn/internal/services/notification"
+	"github.com/link00000000/gwsn/internal/services/systemtray"
 	"github.com/link00000000/gwsn/internal/sysnotif"
 	"github.com/link00000000/gwsn/internal/systray"
+	"github.com/link00000000/gwsn/internal/systray/assets"
 	"github.com/link00000000/gwsn/internal/ui"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/api/gmail/v1"
+	gmailsdk "google.golang.org/api/gmail/v1"
 	"google.golang.org/api/option"
 )
 
@@ -65,12 +71,12 @@ func RunMonitor(ctx context.Context) error {
 	*/
 
 	httpClient := gworkspace.NewHttpClient()
-	err := httpClient.Configure(ctx, gmail.GmailReadonlyScope)
+	err := httpClient.Configure(ctx, gmailsdk.GmailReadonlyScope)
 	if err != nil {
 		return fmt.Errorf("error while configuring http client: %v", err)
 	}
 
-	svc, err := gmail.NewService(ctx, option.WithHTTPClient(httpClient.Client))
+	svc, err := gmailsdk.NewService(ctx, option.WithHTTPClient(httpClient.Client))
 	if err != nil {
 		return fmt.Errorf("error while creating gmail service: %v", err)
 	}
@@ -117,7 +123,7 @@ func RunHttpServer(ctx context.Context) error {
 	return s.Shutdown(context.TODO())
 }
 
-func main() {
+func main_old() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -163,6 +169,17 @@ func main() {
 	})
 
 	if err := g.Wait(); err != nil {
+		panic(err)
+	}
+}
+
+func main() {
+	app.RegisterGmailService(gmail.NewService())
+	app.RegisterGoogleCalendarService(googlecalendar.NewService())
+	app.RegisterNotificationService(notification.NewBeeepNotificationService("Google Workspace Notify"))
+	app.RegisterSystemTrayService(systemtray.NewSystraySystemTrayService("Google Workspace Notify", assets.TrayIcon))
+
+	if err := app.Run(context.Background()); err != nil {
 		panic(err)
 	}
 }
