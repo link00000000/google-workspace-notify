@@ -10,6 +10,10 @@ default : build/gwsn/amd64-windows/gwsn.exe
 run : build/gwsn/amd64-windows/gwsn.exe
 	$<
 
+.PHONY : clean
+clean :
+	@rm -r -f build
+
 # Linux builds
 build/gwsn/amd64-linux/gwsn : $(sources) $(assets) $(module)
 	GOOS=linux GOARCH=amd64 go build -o $@ $(entrypoint)
