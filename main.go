@@ -34,8 +34,8 @@ func main() {
 
 	cfg, err := config.Build(
 		config.NewInMemoryConfigProvider(&DefaultConfig),
-		config.NewJsonFileConfigProvider(config.CwdRelFilePath("config.json")),
 		config.NewJsonFileConfigProvider(config.UserConfigRelFilePath("config.json")),
+		config.NewJsonFileConfigProvider(config.CwdRelFilePath("config.json")),
 	)
 
 	if err != nil {
