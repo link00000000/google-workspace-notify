@@ -6,36 +6,56 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = {
-    nixpkgs,
-    flake-utils,
-    ...
-  }:
-    flake-utils.lib.eachDefaultSystem (
-      system: let
+  outputs = { nixpkgs, flake-utils, ... }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        nativeBuildInputs = with pkgs; [
+        commonTools = with pkgs; [
           go
           gopls
-		  delve
-		  pkg-config
-		  libayatana-appindicator
-		  gtk3
+          delve
+          gnumake
+          pkg-config
         ];
-        buildInputs = with pkgs; [
-		  gnumake
-		];
-      in {
-        devShells.default = pkgs.mkShell {inherit nativeBuildInputs buildInputs; hardeningDisable = [ "fortify" ];};
 
-        packages.default = pkgs.buildGoModule rec {
-          name = "template";
-          src = ./.;
+        mkWindowsShell =
+          { crossPkgs
+          , goarch
+          }:
+          let
+            ccPrefix = crossPkgs.stdenv.cc.targetPrefix;
+          in
+          pkgs.mkShellNoCC {
+            nativeBuildInputs =
+              commonTools
+              ++ [
+                crossPkgs.stdenv.cc
+                crossPkgs.binutils
+              ];
 
-          inherit buildInputs;
+            shellHook = ''
+              export GOOS=windows
+              export GOARCH=${goarch}
+              export CGO_ENABLED=1
+              export CC=${ccPrefix}gcc
+              export CXX=${ccPrefix}g++
+            '';
+          };
+      in
+      {
+        devShells.default = pkgs.mkShell {
+          nativeBuildInputs = commonTools;
+        };
 
-          vendorHash = null;
+        devShells.windows-amd64 = mkWindowsShell {
+          crossPkgs = pkgs.pkgsCross.mingwW64;
+          goarch = "amd64";
+        };
+
+        devShells.windows-386 = mkWindowsShell {
+          crossPkgs = pkgs.pkgsCross.mingw32;
+          goarch = "386";
         };
       }
     );
