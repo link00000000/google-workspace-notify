@@ -56,11 +56,13 @@ func (svcs *ServiceContainer) shutdownServices() error {
 
 type Application struct {
 	svcs             ServiceContainer
+	logger           *slog.Logger
 	shutdownRequests chan *shutdownRequest
 }
 
 var instance *Application = &Application{
 	svcs:             ServiceContainer{},
+	logger:           slog.Default(),
 	shutdownRequests: make(chan *shutdownRequest),
 }
 
@@ -96,8 +98,12 @@ func SystemTrayService() services.SystemTrayService {
 	return instance.svcs.systemTray
 }
 
+func ConfigureLogger(logger *slog.Logger) {
+	instance.logger = logger
+}
+
 func Logger() *slog.Logger {
-	return slog.Default()
+	return instance.logger
 }
 
 func Run(ctx context.Context) error {

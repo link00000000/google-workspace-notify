@@ -2,16 +2,36 @@ package gmail
 
 import (
 	"context"
+	"time"
 
 	"github.com/link00000000/gwsn/internal/services"
 )
 
-type gmailService struct{}
+type AccountCredentials struct {
+	TokenType    string
+	AccessToken  string
+	RefreshToken string
+	Expiry       string
+	ExpiresIn    int
+}
+
+type Account struct {
+	Name  string
+	Creds AccountCredentials
+}
+
+type gmailService struct {
+	pollingInterval time.Duration
+	accounts        []Account
+}
 
 var _ services.GmailService = (*gmailService)(nil)
 
-func NewService() *gmailService {
-	return &gmailService{}
+func NewService(pollingInterval time.Duration, accounts []Account) *gmailService {
+	return &gmailService{
+		pollingInterval: pollingInterval,
+		accounts:        accounts,
+	}
 }
 
 func (*gmailService) Setup() error {

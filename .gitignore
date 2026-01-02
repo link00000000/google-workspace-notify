@@ -60,3 +60,4 @@ tags
 [._]*.un~
 
 # End of https://www.toptal.com/developers/gitignore/api/go,direnv,vim
+config.json
