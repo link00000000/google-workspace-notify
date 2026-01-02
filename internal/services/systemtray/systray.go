@@ -31,17 +31,13 @@ func (svc *systraySystemTrayService) Run(ctx context.Context) error {
 		systray.SetIcon(svc.trayIcon)
 		systray.SetTitle(svc.title)
 
-		settingsEntry := systray.AddMenuItem("Settings", "")
 		systray.AddSeparator()
 		exitEntry := systray.AddMenuItem("Exit", "")
 
 		for {
 			select {
-			case <-settingsEntry.ClickedCh:
-				panic("not implemented")
-
 			case <-exitEntry.ClickedCh:
-				app.RequestShutdown("exit requested by user")
+				app.RequestShutdown(true, "system tray exit menu entry clicked")
 
 			case <-ctx.Done():
 				systray.Quit()

@@ -9,6 +9,11 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+type shutdownRequest struct {
+	RequestedByUser bool
+	Reason          string
+}
+
 type ServiceContainer struct {
 	gmail          services.GmailService
 	googleCalendar services.GoogleCalendarService
@@ -51,12 +56,12 @@ func (svcs *ServiceContainer) shutdownServices() error {
 
 type Application struct {
 	svcs             ServiceContainer
-	shutdownRequests chan string
+	shutdownRequests chan *shutdownRequest
 }
 
 var instance *Application = &Application{
 	svcs:             ServiceContainer{},
-	shutdownRequests: make(chan string),
+	shutdownRequests: make(chan *shutdownRequest),
 }
 
 func RegisterGmailService(svc services.GmailService) {
@@ -108,8 +113,8 @@ func Run(ctx context.Context) error {
 	g.Go(func() error { return instance.svcs.runServices(ctx) })
 	g.Go(func() error {
 		select {
-		case reason := <-instance.shutdownRequests:
-			Logger().Debug("received shutdown request", "reason", reason)
+		case req := <-instance.shutdownRequests:
+			Logger().Debug("received shutdown request", "requestedByUser", req.RequestedByUser, "reason", req.Reason)
 			cancel()
 
 		case <-ctx.Done():
@@ -125,6 +130,6 @@ func Run(ctx context.Context) error {
 	return instance.svcs.shutdownServices()
 }
 
-func RequestShutdown(reason string) {
-	instance.shutdownRequests <- reason
+func RequestShutdown(requestedByUser bool, reason string) {
+	instance.shutdownRequests <- &shutdownRequest{requestedByUser, reason}
 }
